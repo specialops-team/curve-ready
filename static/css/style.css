@@ -1,0 +1,12 @@
+/* Custom styles (minimal, Tailwind handles most of it) */
+
+/* Ensures the file input is styled correctly across browsers */
+input[type="file"] {
+  display: block;
+  width: 100%;
+  padding: 0.625rem; /* 10px */
+  margin-top: 0.5rem; /* 8px */
+  border: 1px solid #d1d5db; /* gray-300 */
+  border-radius: 0.25rem; /* rounded-md */
+  box-sizing: border-box;
+}

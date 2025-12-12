@@ -1,0 +1,4 @@
+Flask
+pandas
+openpyxl
+gunicorn  # Recommended for production server hosting
