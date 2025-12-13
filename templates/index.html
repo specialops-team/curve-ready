@@ -21,13 +21,11 @@
 
         <!-- Step tabs -->
         <div class="flex gap-2 mb-8">
-            <button id="tabStep1" type="button"
-                class="px-4 py-2 rounded-lg font-semibold border transition"
+            <button id="tabStep1" type="button" class="px-4 py-2 rounded-lg font-semibold border transition"
                 data-step="1">
                 Step 1
             </button>
-            <button id="tabStep2" type="button"
-                class="px-4 py-2 rounded-lg font-semibold border transition"
+            <button id="tabStep2" type="button" class="px-4 py-2 rounded-lg font-semibold border transition"
                 data-step="2">
                 Step 2
             </button>
@@ -61,7 +59,7 @@
 
         <!-- STEP 2 PANEL -->
         <section id="panelStep2" class="hidden">
-            <h2 class="text-2xl font-semibold mb-6 text-gray-800">Step 2: Populate Alternate Titles</h2>
+            <h2 class="text-2xl font-semibold mb-6 text-gray-800">Step 2: Populate Alternate Titles & IP Chain</h2>
 
             <form id="uploadFormStep2" action="/process_step2" method="POST" enctype="multipart/form-data">
 
@@ -82,7 +80,8 @@
                 </div>
 
                 <div class="mb-8 p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-md">
-                    <span class="font-semibold">What this does:</span> Reads the <b>Works</b> tab (Work ID, Title, Main Identifier, Tunecode, Language, Foreign ID) and creates rows in <b>Alternate Titles</b> by matching the JotForm Title + EEP Master Catalog Number and splitting multi-line alternate titles.
+                    <span class="font-semibold">What this does:</span> This process populates the Alternate Titles and
+                    IP Chain fields in the Curve file based on data from the JotForm source file.
                 </div>
 
                 <button type="submit" id="submitBtnStep2"
