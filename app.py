@@ -2,6 +2,8 @@ import pandas as pd
 import io
 import os
 import tempfile
+from step2 import process_alternate_titles 
+# DELETED: from step3 import process_ip_chain 
 from flask import Flask, request, send_file, render_template
 
 app = Flask(__name__)
@@ -307,5 +309,47 @@ def process_files_route():
             download_name=output_file_name
         )
 
+@app.route("/process_step2", methods=["POST"])
+def process_step2():
+    if "curve_file" not in request.files or "jotform_file" not in request.files:
+        return "Error: Both Curve re-export file and Jotform file are required.", 400
+
+    curve_file = request.files["curve_file"]
+    jotform_file = request.files["jotform_file"]
+
+    if curve_file.filename == "" or jotform_file.filename == "":
+        return "Error: Please select both files.", 400
+
+    # 1. READ RAW FILE CONTENTS
+    curve_file_content = curve_file.read()
+    jotform_file_content = jotform_file.read()
+
+    # 2. RUN STEP 2: ALTERNATE TITLES & IP CHAIN
+    # The output of this function is a BytesIO buffer of the file with Alt Titles AND IP Chain inserted.
+    final_output_buffer = process_alternate_titles(
+        io.BytesIO(curve_file_content),
+        io.BytesIO(jotform_file_content)
+    )
+
+    # Check for error from Step 2
+    if isinstance(final_output_buffer, str):
+        # Renamed the failure message to reflect combined logic
+        return f"Processing Failed (Alternate Titles & IP Chain): {final_output_buffer}", 500
+    
+    # DELETED: Step 3 is no longer needed
+
+    # 4. RETURN FINAL FILE
+    output_filename = "curve_ready_step2_and_3_final.xlsx"
+    
+    return send_file(
+        final_output_buffer,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=output_filename
+    )
+
 if __name__ == '__main__':
+    # Ensure a local static directory exists for serving files
+    if not os.path.exists('static'):
+        os.makedirs('static')
     app.run(debug=True)

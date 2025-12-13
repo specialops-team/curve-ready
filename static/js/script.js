@@ -1,40 +1,48 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const uploadForm = document.getElementById("uploadForm");
-  const submitBtn = document.getElementById("submitBtn");
-  const statusDiv = document.getElementById("status");
-  const jotformFile = document.getElementById("jotform_file");
+  // ----- Tabs -----
+  const tabStep1 = document.getElementById("tabStep1");
+  const tabStep2 = document.getElementById("tabStep2");
+  const panelStep1 = document.getElementById("panelStep1");
+  const panelStep2 = document.getElementById("panelStep2");
 
-  uploadForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
+  function setActiveTab(step) {
+    const isStep1 = step === 1;
+    panelStep1.classList.toggle("hidden", !isStep1);
+    panelStep2.classList.toggle("hidden", isStep1);
 
-    // 1. Reset status and disable button
+    // simple active styling
+    const active = "bg-blue-600 text-white border-blue-600";
+    const inactive = "bg-white text-gray-800 border-gray-300 hover:bg-gray-50";
+
+    tabStep1.className = `px-4 py-2 rounded-lg font-semibold border transition ${isStep1 ? active : inactive}`;
+    tabStep2.className = `px-4 py-2 rounded-lg font-semibold border transition ${!isStep1 ? active : inactive}`;
+  }
+
+  tabStep1.addEventListener("click", () => setActiveTab(1));
+  tabStep2.addEventListener("click", () => setActiveTab(2));
+  setActiveTab(1); // default
+
+  // ----- Shared helpers -----
+  async function submitAndDownload({
+    form,
+    endpoint,
+    submitBtn,
+    statusDiv,
+    filenameBuilder,
+  }) {
     statusDiv.classList.add("hidden");
     statusDiv.textContent = "";
+
     submitBtn.disabled = true;
+    const originalBtnText = submitBtn.textContent;
     submitBtn.textContent = "Processing... Please wait.";
 
-    const formData = new FormData(uploadForm);
-
-    // Use the filename from the input field to create a default name
-    let filename = "processed_file.xlsx";
-    if (jotformFile.files.length > 0) {
-      // Get the base filename and extension
-      const originalName = jotformFile.files[0].name;
-      const parts = originalName.split(".");
-      const ext = parts.length > 1 ? "." + parts.pop() : "";
-      const name = parts.join(".");
-      // Set the expected name for display/fallback
-      filename = `${name}_curve_ready_step1${ext}`;
-    }
+    const formData = new FormData(form);
+    const filename = filenameBuilder();
 
     try {
-      // 2. Submit data to Flask endpoint
-      const response = await fetch("/process", {
-        method: "POST",
-        body: formData,
-      });
+      const response = await fetch(endpoint, { method: "POST", body: formData });
 
-      // 3. Handle errors first
       if (!response.ok) {
         const errorText = await response.text();
         statusDiv.classList.remove("hidden");
@@ -44,21 +52,16 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      // 4. Handle success (File download)
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.style.display = "none";
       a.href = url;
-
-      // This line ensures the browser uses the correct, dynamic filename
       a.download = filename;
-
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
 
-      // 5. Update status
       statusDiv.classList.remove("hidden");
       statusDiv.classList.add("bg-green-100", "text-green-800");
       statusDiv.classList.remove("bg-red-100", "text-red-800");
@@ -69,9 +72,64 @@ document.addEventListener("DOMContentLoaded", () => {
       statusDiv.classList.remove("bg-green-100", "text-green-800");
       statusDiv.textContent = `An unexpected error occurred: ${error.message}`;
     } finally {
-      // 6. Re-enable button
       submitBtn.disabled = false;
-      submitBtn.textContent = "Proceed to Process File";
+      submitBtn.textContent = originalBtnText;
     }
+  }
+
+  // ----- Step 1 -----
+  const formStep1 = document.getElementById("uploadFormStep1");
+  const submitBtnStep1 = document.getElementById("submitBtnStep1");
+  const statusStep1 = document.getElementById("statusStep1");
+  const jot1 = document.getElementById("jotform_file_step1");
+
+  formStep1.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    await submitAndDownload({
+      form: formStep1,
+      endpoint: "/process",
+      submitBtn: submitBtnStep1,
+      statusDiv: statusStep1,
+      filenameBuilder: () => {
+        let filename = "processed_file.xlsx";
+        if (jot1.files.length > 0) {
+          const originalName = jot1.files[0].name;
+          const parts = originalName.split(".");
+          const ext = parts.length > 1 ? "." + parts.pop() : "";
+          const name = parts.join(".");
+          filename = `${name}_curve_ready_step1${ext}`;
+        }
+        return filename;
+      },
+    });
+  });
+
+  // ----- Step 2 -----
+  const formStep2 = document.getElementById("uploadFormStep2");
+  const submitBtnStep2 = document.getElementById("submitBtnStep2");
+  const statusStep2 = document.getElementById("statusStep2");
+  const curve2 = document.getElementById("curve_file_step2");
+
+  formStep2.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    await submitAndDownload({
+      form: formStep2,
+      endpoint: "/process_step2",
+      submitBtn: submitBtnStep2,
+      statusDiv: statusStep2,
+      filenameBuilder: () => {
+        let filename = "curve_ready_step2.xlsx";
+        if (curve2.files.length > 0) {
+          const originalName = curve2.files[0].name;
+          const parts = originalName.split(".");
+          const ext = parts.length > 1 ? "." + parts.pop() : ".xlsx";
+          const name = parts.join(".");
+          filename = `${name}_curve_ready_step2${ext}`;
+        }
+        return filename;
+      },
+    });
   });
 });

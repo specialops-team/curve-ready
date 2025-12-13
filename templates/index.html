@@ -8,40 +8,92 @@
     <link rel="icon" href="{{ url_for('static', filename='logo.jpg') }}" type="image/x-icon">
 
     <script src="https://cdn.tailwindcss.com"></script>
-
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 
 <body class="bg-gray-100 flex justify-center min-h-screen">
-    <div class="container bg-white p-10 rounded-lg shadow-xl w-full max-w-xl mt-12 mb-12">
+    <div class="container bg-white p-10 rounded-lg shadow-xl w-full max-w-2xl mt-12 mb-12">
 
         <header class="flex items-center border-b-2 border-gray-200 pb-4 mb-6">
             <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Company Logo" class="h-10">
             <div class="text-3xl font-bold text-blue-600 ml-auto">Curve Ready Files</div>
         </header>
 
-        <h2 class="text-2xl font-semibold mb-6 text-gray-800">File Uploader</h2>
-
-        <form id="uploadForm" action="/process" method="POST" enctype="multipart/form-data">
-
-            <div class="mb-5">
-                <label for="jotform_file" class="font-bold block mb-2 text-gray-700">1. Upload JotForm Excel
-                    File:</label>
-                <input type="file" id="jotform_file" name="jotform_file" accept=".xlsx,.xls" required
-                    class="w-full border-gray-300 rounded-md p-2">
-            </div>
-
-            <div class="mb-8 p-3 bg-blue-50 border border-blue-200 text-blue-800 rounded-md">
-                <span class="font-semibold">Note:</span> Curve template is loaded automatically from the server.
-            </div>
-
-            <button type="submit" id="submitBtn"
-                class="bg-green-600 hover:bg-green-700 text-white p-4 rounded-lg text-xl w-full transition duration-300 ease-in-out font-semibold">
-                Proceed to Process File
+        <!-- Step tabs -->
+        <div class="flex gap-2 mb-8">
+            <button id="tabStep1" type="button"
+                class="px-4 py-2 rounded-lg font-semibold border transition"
+                data-step="1">
+                Step 1
             </button>
-        </form>
+            <button id="tabStep2" type="button"
+                class="px-4 py-2 rounded-lg font-semibold border transition"
+                data-step="2">
+                Step 2
+            </button>
+        </div>
 
-        <div id="status" class="status-message mt-6 p-4 rounded-md hidden"></div>
+        <!-- STEP 1 PANEL -->
+        <section id="panelStep1">
+            <h2 class="text-2xl font-semibold mb-6 text-gray-800">Step 1: Build Curve Template (Works)</h2>
+
+            <form id="uploadFormStep1" action="/process" method="POST" enctype="multipart/form-data">
+                <div class="mb-5">
+                    <label for="jotform_file_step1" class="font-bold block mb-2 text-gray-700">
+                        1. Upload JotForm Excel File:
+                    </label>
+                    <input type="file" id="jotform_file_step1" name="jotform_file" accept=".xlsx,.xls" required
+                        class="w-full border-gray-300 rounded-md p-2">
+                </div>
+
+                <div class="mb-8 p-3 bg-blue-50 border border-blue-200 text-blue-800 rounded-md">
+                    <span class="font-semibold">Note:</span> Curve template is loaded automatically from the server.
+                </div>
+
+                <button type="submit" id="submitBtnStep1"
+                    class="bg-green-600 hover:bg-green-700 text-white p-4 rounded-lg text-xl w-full transition duration-300 ease-in-out font-semibold">
+                    Proceed to Process File
+                </button>
+            </form>
+
+            <div id="statusStep1" class="status-message mt-6 p-4 rounded-md hidden"></div>
+        </section>
+
+        <!-- STEP 2 PANEL -->
+        <section id="panelStep2" class="hidden">
+            <h2 class="text-2xl font-semibold mb-6 text-gray-800">Step 2: Populate Alternate Titles</h2>
+
+            <form id="uploadFormStep2" action="/process_step2" method="POST" enctype="multipart/form-data">
+
+                <div class="mb-5">
+                    <label for="curve_file_step2" class="font-bold block mb-2 text-gray-700">
+                        1. Upload Curve Re-exported Excel File (with Work ID & Main Identifier):
+                    </label>
+                    <input type="file" id="curve_file_step2" name="curve_file" accept=".xlsx,.xls" required
+                        class="w-full border-gray-300 rounded-md p-2">
+                </div>
+
+                <div class="mb-5">
+                    <label for="jotform_file_step2" class="font-bold block mb-2 text-gray-700">
+                        2. Upload JotForm Source Excel File:
+                    </label>
+                    <input type="file" id="jotform_file_step2" name="jotform_file" accept=".xlsx,.xls" required
+                        class="w-full border-gray-300 rounded-md p-2">
+                </div>
+
+                <div class="mb-8 p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-md">
+                    <span class="font-semibold">What this does:</span> Reads the <b>Works</b> tab (Work ID, Title, Main Identifier, Tunecode, Language, Foreign ID) and creates rows in <b>Alternate Titles</b> by matching the JotForm Title + EEP Master Catalog Number and splitting multi-line alternate titles.
+                </div>
+
+                <button type="submit" id="submitBtnStep2"
+                    class="bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-lg text-xl w-full transition duration-300 ease-in-out font-semibold">
+                    Process Step 2
+                </button>
+            </form>
+
+            <div id="statusStep2" class="status-message mt-6 p-4 rounded-md hidden"></div>
+        </section>
+
     </div>
 
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
