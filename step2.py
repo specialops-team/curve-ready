@@ -93,7 +93,7 @@ def _parse_percentage(val):
 
 def _extract_number(val):
     """
-    Extracts the first numeric value from a string, removing non-numeric prefixes/suffixes.
+    Extracts the first numeric value from a string.
     Example: 'EEP-50' -> 50.0, '50%' -> 50.0
     """
     if val is None:
@@ -103,7 +103,6 @@ def _extract_number(val):
     if not s:
         return None
         
-    # Regex to find numbers (integer or decimal)
     match = re.search(r"(\d+(\.\d+)?)", s)
     if match:
         try:
@@ -113,11 +112,20 @@ def _extract_number(val):
     return None
 
 
-def _map_capacity(cap_val):
-    """Maps C, A, AC codes to full text."""
+def _map_capacity(cap_val, is_publisher=False):
+    """Maps capacity codes to full text."""
     if not cap_val:
         return ""
+    
     s = str(cap_val).strip().upper()
+    
+    # Publisher Mapping
+    if is_publisher:
+        if s == "OP":
+            return "Original Publisher"
+        return s
+        
+    # Composer Mapping
     if s == "C":
         return "Composer"
     if s == "A":
@@ -246,7 +254,7 @@ def process_alternate_titles(curve_reexport_buffer, jotform_file_buffer) -> io.B
             ws_ip.delete_rows(3, ws_ip.max_row - 2)
 
         write_row_alt = 3
-        write_row_ip = 3 # Start writing IP Chain data at Row 3
+        write_row_ip = 3 
 
         # ---------------------------
         # Processing Loops
@@ -273,17 +281,17 @@ def process_alternate_titles(curve_reexport_buffer, jotform_file_buffer) -> io.B
             
             matched_jot_row = jot_row_lookup.get(w_foreign_norm)
             
-            # Prepare Work Info function to reduce repetition
+            # Helper to write common work data
             def write_ip_work_info(target_row):
-                ws_ip.cell(target_row, participant_cols[1]['TYPE'] or 1).value = None # Ensure the first cell is cleared if it's not written below
-                ws_ip.cell(target_row, iph(["WORK", "ID"])).value = w_work_id_val
-                ws_ip.cell(target_row, iph(["WORK", "TITLE"])).value = w_title_val
+                ws_ip.cell(target_row, participant_cols[1]['TYPE'] or 1).value = None 
+                if iph(["WORK", "ID"]): ws_ip.cell(target_row, iph(["WORK", "ID"])).value = w_work_id_val
+                if iph(["WORK", "TITLE"]): ws_ip.cell(target_row, iph(["WORK", "TITLE"])).value = w_title_val
                 if iph(["WORK", "MAIN"]): ws_ip.cell(target_row, iph(["WORK", "MAIN"])).value = w_main_id_val
                 if iph(["WORK", "TUNE"]): ws_ip.cell(target_row, iph(["WORK", "TUNE"])).value = w_tunecode_val
                 if iph(["TERRITORY"]): ws_ip.cell(target_row, iph(["TERRITORY"])).value = w_terr_val
 
             if matched_jot_row is not None:
-                # Get Writer Total
+                # 1. Get Writer Total
                 writer_total = 0
                 if jot_writer_total_col:
                     try:
@@ -291,128 +299,165 @@ def process_alternate_titles(curve_reexport_buffer, jotform_file_buffer) -> io.B
                     except:
                         writer_total = 0
                 
-                # Extract all writer data first
-                writers_data = []
+                # 2. Extract Data for all writers
+                extracted_writers = []
                 for i in range(1, min(writer_total + 1, 11)):
-                    # Find dynamic Jotform columns
-                    pub_name_col = _find_jot_col(jot, [[f"PUBLISHER {i} NAME"]])
-                    pub_cae_col = _find_jot_col(jot, [[f"PUBLISHER {i} CAE"]])
-                    comp_share_col = _find_jot_col(jot, [[f"COMPOSER {i} SHARE"]])
-                    comp_cap_col = _find_jot_col(jot, [[f"COMPOSER {i} CAPACITY"]])
+                    # Dynamic Columns
+                    c_first_col = _find_jot_col(jot, [[f"COMPOSER {i} FIRST"]])
+                    c_mid_col = _find_jot_col(jot, [[f"COMPOSER {i} MIDDLE"]])
+                    c_last_col = _find_jot_col(jot, [[f"COMPOSER {i} LAST"]])
+                    c_share_col = _find_jot_col(jot, [[f"COMPOSER {i} SHARE"]])
+                    c_cap_col = _find_jot_col(jot, [[f"COMPOSER {i} CAPACITY"]])
+                    c_cae_col = _find_jot_col(jot, [[f"COMPOSER {i} CAE"]])
+                    
+                    p_name_col = _find_jot_col(jot, [[f"PUBLISHER {i} NAME"]])
+                    p_cae_col = _find_jot_col(jot, [[f"PUBLISHER {i} CAE"]])
+                    p_cap_col = _find_jot_col(jot, [[f"PUBLISHER {i} CAPACITY"]])
+                    
                     eep_share_col = _find_jot_col(jot, [["ELITE", "EMBASSY", "REPRESENTS", "%"]])
+
+                    # Values
+                    c_first = matched_jot_row.get(c_first_col) if c_first_col else ""
+                    c_mid = matched_jot_row.get(c_mid_col) if c_mid_col else ""
+                    c_last = matched_jot_row.get(c_last_col) if c_last_col else ""
                     
-                    p_name = matched_jot_row.get(pub_name_col) if pub_name_col else ""
-                    p_cae = matched_jot_row.get(pub_cae_col) if pub_cae_col else ""
-                    c_share = _parse_percentage(matched_jot_row.get(comp_share_col)) if comp_share_col else 0
-                    c_cap = matched_jot_row.get(comp_cap_col) if comp_cap_col else ""
+                    c_first = str(c_first).strip() if c_first else ""
+                    c_mid = str(c_mid).strip() if c_mid else ""
+                    c_last = str(c_last).strip() if c_last else ""
                     
-                    # Extract only numbers for Mechanical columns
+                    full_name = f"{c_first} {c_mid} {c_last}".replace("  ", " ").strip()
+                    
+                    c_share = _parse_percentage(matched_jot_row.get(c_share_col))
+                    c_cap = _map_capacity(matched_jot_row.get(c_cap_col), is_publisher=False)
+                    c_cae = matched_jot_row.get(c_cae_col)
+                    
+                    p_name = matched_jot_row.get(p_name_col)
+                    p_name_str = str(p_name).strip() if p_name else ""
+                    p_cae = matched_jot_row.get(p_cae_col)
+                    p_cap = _map_capacity(matched_jot_row.get(p_cap_col), is_publisher=True)
+
+                    # Mechanical % for Elite
                     raw_mech = matched_jot_row.get(eep_share_col) if eep_share_col else None
-                    mech_val = _extract_number(raw_mech)
-                    
-                    # Determine Control Status
-                    norm_name = _norm(p_name)
-                    is_controlled = "elite embassy publishing" in norm_name or "music embassies publishing" in norm_name
+                    mech_val = _extract_number(raw_mech) # e.g., 50.0
+
+                    # Check Controlled
+                    norm_p_name = _norm(p_name_str)
+                    is_elite = "elite embassy publishing" in norm_p_name or "music embassies publishing" in norm_p_name
                     
                     w_obj = {
-                        "name": p_name,
-                        "cae": p_cae,
-                        "share": c_share,
-                        "capacity": _map_capacity(c_cap),
-                        "mech_val": mech_val,
-                        "is_controlled": is_controlled,
-                        "original_index": i
+                        "c_first": c_first,
+                        "c_mid": c_mid,
+                        "c_last": c_last,
+                        "c_name": full_name,
+                        "c_share": c_share,
+                        "c_cap": c_cap,
+                        "c_cae": c_cae,
+                        "p_name": p_name_str,
+                        "p_cae": p_cae,
+                        "p_cap": p_cap,
+                        "mech_val": mech_val if mech_val is not None else 0.0,
+                        "is_controlled": is_elite
                     }
-                    writers_data.append(w_obj)
+                    extracted_writers.append(w_obj)
 
-                # Split into groups
-                elite_group = [w for w in writers_data if w['is_controlled']]
-                other_group = [w for w in writers_data if not w['is_controlled']]
+                # 3. Sort/Group Writers
+                controlled_group = [w for w in extracted_writers if w['is_controlled']]
+                other_group = [w for w in extracted_writers if not w['is_controlled']]
 
-                rows_to_generate = []
-                
-                # Rule: Controlled writers (if any) go first
-                if elite_group:
-                    rows_to_generate.append({"type": "controlled", "writers": elite_group})
-                
-                # Rule: Other writers (if any) go in a second row
+                # Determine the Elite Mechanical Value (Used for calculating Copyright Control remainder)
+                elite_mech_value = 0.0
+                for w in controlled_group:
+                    if w['mech_val'] > 0:
+                        elite_mech_value = w['mech_val']
+                        break
+                if elite_mech_value == 0.0:
+                    for w in extracted_writers:
+                        if w['mech_val'] > 0:
+                            elite_mech_value = w['mech_val']
+                            break
+
+                rows_to_create = []
+                if controlled_group:
+                    rows_to_create.append({"type": "controlled", "writers": controlled_group})
                 if other_group:
-                    rows_to_generate.append({"type": "other", "writers": other_group})
+                    rows_to_create.append({"type": "other", "writers": other_group})
                 
-                # Fallback: If only one writer, and they aren't controlled, they still get a row.
-                if not rows_to_generate and writer_total > 0:
-                     rows_to_generate.append({"type": "other", "writers": writers_data})
-
-                # Loop through the determined rows (max 2 usually)
-                for row_idx, row_data in enumerate(rows_to_generate):
-                    row_type = row_data["type"]
-                    writers_in_row = row_data["writers"]
+                # 4. Generate Rows
+                for row_data in rows_to_create:
+                    r_type = row_data['type']
+                    writers = row_data['writers']
                     
-                    # Write Work Info
                     write_ip_work_info(write_row_ip)
                     
-                    # Fill Participants 1..N
-                    for i, w in enumerate(writers_in_row):
-                        p_idx = i + 1 # Participant 1, Participant 2...
-                        if p_idx > 10: break # Safety limit
-                        
-                        cols = participant_cols.get(p_idx)
-                        if not cols: continue
-                        
-                        # --- Determine Values ---
-                        
-                        # Type
-                        if p_idx == 1:
-                            p_type = "Publisher"
-                        else:
-                            p_type = "Original Publisher"
-                        
-                        # Name
-                        if row_type == "other" and p_idx == 1:
-                            final_name = "Copyright Control"
-                        else:
-                            final_name = w['name']
-
-                        # Controlled Bool
-                        is_ctrl = w['is_controlled']
-                        
-                        # Performance Calculations: 50% of Composer Share
-                        perf_share = w['share'] * 0.5
-                        
-                        # Capacity
-                        cap_text = w['capacity']
-                        
-                        # --- Write to Cells ---
-                        if cols['TYPE']: ws_ip.cell(write_row_ip, cols['TYPE']).value = p_type
-                        if cols['NAME']: ws_ip.cell(write_row_ip, cols['NAME']).value = final_name
-                        
-                        # Skip First/Middle/Surname for P1 (Publisher)
-                        if p_idx > 1:
-                            # Note: Logic doesn't provide writer names, so these remain blank unless added in the future.
-                            if cols['FIRST']: ws_ip.cell(write_row_ip, cols['FIRST']).value = None
-                            if cols['MIDDLE']: ws_ip.cell(write_row_ip, cols['MIDDLE']).value = None
-                            if cols['SURNAME']: ws_ip.cell(write_row_ip, cols['SURNAME']).value = None
-
-                        if cols['CAE']: ws_ip.cell(write_row_ip, cols['CAE']).value = w['cae']
-                        if cols['CONTROLLED']: ws_ip.cell(write_row_ip, cols['CONTROLLED']).value = is_ctrl
-                        
-                        # Mechanical: Use cleaned number value
-                        if cols['MECH_OWN'] and w['mech_val'] is not None: 
-                            ws_ip.cell(write_row_ip, cols['MECH_OWN']).value = w['mech_val']
-                        if cols['MECH_COLL'] and w['mech_val'] is not None: 
-                            ws_ip.cell(write_row_ip, cols['MECH_COLL']).value = w['mech_val']
-                            
-                        # Performance: Use calculated share
-                        if cols['PERF_OWN']: ws_ip.cell(write_row_ip, cols['PERF_OWN']).value = perf_share
-                        if cols['PERF_COLL']: ws_ip.cell(write_row_ip, cols['PERF_COLL']).value = perf_share
-                        
-                        if cols['CAPACITY']: ws_ip.cell(write_row_ip, cols['CAPACITY']).value = cap_text
+                    # --- Participant 1: Publisher ---
+                    p1_cols = participant_cols[1]
                     
+                    # Determine P1 values
+                    if r_type == "controlled":
+                        # Controlled: Use extracted value
+                        p1_name = writers[0]['p_name']
+                        p1_cae = writers[0]['p_cae']
+                        p1_is_ctrl = True
+                        p1_mech = elite_mech_value 
+                        p1_cap = writers[0]['p_cap']
+                    else:
+                        # Copyright Control: Use 100 - Elite Value
+                        p1_name = "Copyright Control"
+                        p1_cae = "00000000000" # Fixed CAE for CC
+                        p1_is_ctrl = False
+                        p1_mech = 100.0 - elite_mech_value 
+                        p1_cap = "Original Publisher" 
+
+                    # Performance is always 50% of Owned Mech
+                    p1_perf = p1_mech * 0.5
+
+                    # Write P1
+                    if p1_cols['TYPE']: ws_ip.cell(write_row_ip, p1_cols['TYPE']).value = "Publisher"
+                    if p1_cols['NAME']: ws_ip.cell(write_row_ip, p1_cols['NAME']).value = p1_name
+                    # P1 Name parts blank per instructions
+                    if p1_cols['CAE']: ws_ip.cell(write_row_ip, p1_cols['CAE']).value = p1_cae
+                    if p1_cols['CONTROLLED']: ws_ip.cell(write_row_ip, p1_cols['CONTROLLED']).value = p1_is_ctrl
+                    if p1_cols['CAPACITY']: ws_ip.cell(write_row_ip, p1_cols['CAPACITY']).value = p1_cap
+                    
+                    if p1_cols['MECH_OWN']: ws_ip.cell(write_row_ip, p1_cols['MECH_OWN']).value = p1_mech
+                    if p1_cols['MECH_COLL']: ws_ip.cell(write_row_ip, p1_cols['MECH_COLL']).value = p1_mech
+                    if p1_cols['PERF_OWN']: ws_ip.cell(write_row_ip, p1_cols['PERF_OWN']).value = p1_perf
+                    if p1_cols['PERF_COLL']: ws_ip.cell(write_row_ip, p1_cols['PERF_COLL']).value = p1_perf
+
+                    # --- Participant 2..N+1: Composers ---
+                    for i, w in enumerate(writers):
+                        p_idx = i + 2 # Start at Participant 2
+                        if p_idx > 10: break
+
+                        p_cols = participant_cols[p_idx]
+                        
+                        # Calc values
+                        comp_perf = w['c_share'] * 0.5
+                        
+                        if p_cols['TYPE']: ws_ip.cell(write_row_ip, p_cols['TYPE']).value = "Composer"
+                        if p_cols['NAME']: ws_ip.cell(write_row_ip, p_cols['NAME']).value = w['c_name']
+                        if p_cols['FIRST']: ws_ip.cell(write_row_ip, p_cols['FIRST']).value = w['c_first']
+                        if p_cols['MIDDLE']: ws_ip.cell(write_row_ip, p_cols['MIDDLE']).value = w['c_mid']
+                        if p_cols['SURNAME']: ws_ip.cell(write_row_ip, p_cols['SURNAME']).value = w['c_last']
+                        if p_cols['CAE']: ws_ip.cell(write_row_ip, p_cols['CAE']).value = w['c_cae']
+                        
+                        # Controlled: True if their publisher was Elite (which matches r_type here)
+                        if p_cols['CONTROLLED']: ws_ip.cell(write_row_ip, p_cols['CONTROLLED']).value = w['is_controlled']
+                        
+                        if p_cols['CAPACITY']: ws_ip.cell(write_row_ip, p_cols['CAPACITY']).value = w['c_cap']
+                        
+                        # Mech is Zero for composers
+                        if p_cols['MECH_OWN']: ws_ip.cell(write_row_ip, p_cols['MECH_OWN']).value = 0
+                        if p_cols['MECH_COLL']: ws_ip.cell(write_row_ip, p_cols['MECH_COLL']).value = 0
+                        
+                        # Perf is 50% of Share
+                        if p_cols['PERF_OWN']: ws_ip.cell(write_row_ip, p_cols['PERF_OWN']).value = comp_perf
+                        if p_cols['PERF_COLL']: ws_ip.cell(write_row_ip, p_cols['PERF_COLL']).value = comp_perf
+
                     write_row_ip += 1
 
-
             # ---------------------------
-            # 2. ALTERNATE TITLES LOGIC (Unchanged from original)
+            # 2. ALTERNATE TITLES LOGIC (Unchanged)
             # ---------------------------
             
             key = (w_title_norm, w_foreign_norm)
@@ -447,4 +492,6 @@ def process_alternate_titles(curve_reexport_buffer, jotform_file_buffer) -> io.B
         return out
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return f"Processing Failed in step2.py: {e.__class__.__name__}: {e}"
