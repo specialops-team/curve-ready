@@ -127,7 +127,7 @@ def _map_capacity(cap_val, is_publisher=False):
         
     # Composer Mapping
     if s == "C":
-        return "Composer"
+        return "Music"
     if s == "A":
         return "Lyrics"
     if s in ["AC", "CA"]:
