@@ -309,6 +309,7 @@ def process_alternate_titles(curve_reexport_buffer, jotform_file_buffer) -> io.B
                     c_share_col = _find_jot_col(jot, [[f"COMPOSER {i} SHARE"]])
                     c_cap_col = _find_jot_col(jot, [[f"COMPOSER {i} CAPACITY"]])
                     c_cae_col = _find_jot_col(jot, [[f"COMPOSER {i} CAE"]])
+                    c_controlled_col = _find_jot_col(jot, [[f"COMPOSER {i} CONTROLLED"]]) # <--- NEW: Composer Controlled Column
                     
                     p_name_col = _find_jot_col(jot, [[f"PUBLISHER {i} NAME"]])
                     p_cae_col = _find_jot_col(jot, [[f"PUBLISHER {i} CAE"]])
@@ -331,6 +332,10 @@ def process_alternate_titles(curve_reexport_buffer, jotform_file_buffer) -> io.B
                     c_cap = _map_capacity(matched_jot_row.get(c_cap_col), is_publisher=False)
                     c_cae = matched_jot_row.get(c_cae_col)
                     
+                    # Composer Controlled Status (Y/N -> True/False)
+                    c_controlled_val = str(matched_jot_row.get(c_controlled_col)).strip().upper() if c_controlled_col else ""
+                    is_composer_controlled = (c_controlled_val == "Y")
+                    
                     p_name = matched_jot_row.get(p_name_col)
                     p_name_str = str(p_name).strip() if p_name else ""
                     p_cae = matched_jot_row.get(p_cae_col)
@@ -340,9 +345,9 @@ def process_alternate_titles(curve_reexport_buffer, jotform_file_buffer) -> io.B
                     raw_mech = matched_jot_row.get(eep_share_col) if eep_share_col else None
                     mech_val = _extract_number(raw_mech) # e.g., 50.0
 
-                    # Check Controlled
+                    # Check Publisher Controlled Status (used for grouping rows)
                     norm_p_name = _norm(p_name_str)
-                    is_elite = "elite embassy publishing" in norm_p_name or "music embassies publishing" in norm_p_name
+                    is_publisher_controlled = "elite embassy publishing" in norm_p_name or "music embassies publishing" in norm_p_name
                     
                     w_obj = {
                         "c_first": c_first,
@@ -356,13 +361,15 @@ def process_alternate_titles(curve_reexport_buffer, jotform_file_buffer) -> io.B
                         "p_cae": p_cae,
                         "p_cap": p_cap,
                         "mech_val": mech_val if mech_val is not None else 0.0,
-                        "is_controlled": is_elite
+                        "is_controlled": is_composer_controlled, # <--- Composer's specific status (Y/N)
+                        "is_publisher_controlled": is_publisher_controlled # <--- Publisher's status (used for grouping)
                     }
                     extracted_writers.append(w_obj)
 
                 # 3. Sort/Group Writers
-                controlled_group = [w for w in extracted_writers if w['is_controlled']]
-                other_group = [w for w in extracted_writers if not w['is_controlled']]
+                # Grouping is still based on the publisher's controlled status
+                controlled_group = [w for w in extracted_writers if w['is_publisher_controlled']]
+                other_group = [w for w in extracted_writers if not w['is_publisher_controlled']]
 
                 # Determine the Elite Mechanical Value (Used for calculating Copyright Control remainder)
                 elite_mech_value = 0.0
@@ -441,7 +448,7 @@ def process_alternate_titles(curve_reexport_buffer, jotform_file_buffer) -> io.B
                         if p_cols['SURNAME']: ws_ip.cell(write_row_ip, p_cols['SURNAME']).value = w['c_last']
                         if p_cols['CAE']: ws_ip.cell(write_row_ip, p_cols['CAE']).value = w['c_cae']
                         
-                        # Controlled: True if their publisher was Elite (which matches r_type here)
+                        # Controlled: Uses the Composer's specific status (Y/N -> True/False)
                         if p_cols['CONTROLLED']: ws_ip.cell(write_row_ip, p_cols['CONTROLLED']).value = w['is_controlled']
                         
                         if p_cols['CAPACITY']: ws_ip.cell(write_row_ip, p_cols['CAPACITY']).value = w['c_cap']
