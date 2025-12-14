@@ -49,7 +49,8 @@ def process_curve_files(jotform_file_buffer, curve_file_buffer):
         "Recording Release Date (CWR)": "Copyright Date", 
         "Recording Label Name": "Label Copy", 
         "Artist(s)": "Performers", 
-        "Recording ISRC": "Track ISRCs"
+        "Recording ISRC": "Track ISRCs",
+        "EEP Master Catalog Number": "Foreign ID",  # UPDATED MAPPING HERE
     }
 
     # --- DYNAMIC COLUMN NAME FINDER (FIX FOR MISMATCHED NAMES) ---
