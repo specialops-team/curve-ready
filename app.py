@@ -237,7 +237,10 @@ def process_curve_files(jotform_file_buffer, curve_file_buffer):
     # ---- 4. OTHER STATIC VALUES ----
     static_columns = {
         "Language": "English",
-        "Territories": "WW"
+        "Territories": "WW",
+        "Category": "Pop",
+        "Composite Type": "None",
+        "Work Version": "Original Work"
     }
     
     for col, val in static_columns.items():
