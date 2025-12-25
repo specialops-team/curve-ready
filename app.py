@@ -177,7 +177,7 @@ def process_curve_files(jotform_file_buffer, curve_file_buffer):
             # Apply formatting rules
             if curve_col == "Performers":
                 # Uses semicolon followed by space
-                col_data = col_data.apply(lambda x: join_multiline_parts(x, separator="; ")) 
+                col_data = col_data.apply(lambda x: join_multiline_parts(x, separator=";")) 
 
             if curve_col == "Copyright Date":
                 col_data = pd.to_datetime(col_data, errors='coerce').dt.strftime("%m/%d/%Y")
