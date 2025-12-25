@@ -205,8 +205,30 @@ def process_curve_files(jotform_file_buffer, curve_file_buffer):
                 col_data = col_data.apply(apply_universal_filter)
 
             elif curve_col == "Tunecode":
-                # Apply general filtering (NRY, NRYi, YTO, OJ)
+                # Apply general filtering first (NRY, NRYi, YTO, OJ)
                 col_data = col_data.apply(apply_universal_filter)
+                
+                # UPDATE: 
+                # 1. Clean the string (Extract everything before the first hyphen or space)
+                # 2. Check for exactly 8 alphanumeric characters
+                def clean_and_validate_tunecode(x):
+                    if pd.isna(x) or x is None:
+                        return None
+                    
+                    s = str(x).strip()
+                    
+                    # Split by hyphen first to handle "12345678 - http..."
+                    # Also split by space just in case there is no hyphen but there is a URL
+                    # Taking the first element [0] ensures we get the code
+                    cleaned_code = s.split(' - ')[0].split(' ')[0].strip()
+                    
+                    # Validate: Length must be 8 AND must be alphanumeric (digits + letters)
+                    if len(cleaned_code) == 8 and cleaned_code.isalnum():
+                        return cleaned_code
+                    
+                    return None
+
+                col_data = col_data.apply(clean_and_validate_tunecode)
             
             # Insert data into Curve starting at START_INDEX (index 2)
             curve_df.loc[START_INDEX : end_index_of_data, curve_col] = col_data.values
