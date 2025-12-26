@@ -75,33 +75,17 @@ def process_curve_files(jotform_file_buffer, curve_file_buffer):
     
     # --- UPDATED NOTES CONFIGURATION ---
     NOTES_SOURCE_COLUMNS = [
-        "EEP Master Catalog Number",
-        "Labeled Details for Portal & YTT System",
-        "PORTAL LINK TO SONG - MULTI LINE",
-        "Release Link",
-        "YOUTUBE TEAM",
-        "ISWC",
-        "Recording ISRC",
-        "Title",
-        "Artist(s)",
-        "Genre",       
-        "Recording Label Name",
-        "Recording Release Date (CWR)",
-        "Recording Title",
-        "Album UPC",
-        "Instrumental or Riddim Title (If Any)",
-        "BMI WORK #",
-        "ASCAP WORK #",
-        "USAMECH #",
-        "MRCODE # / SDXCODE #",
-        "TUNECODE #",
-        "SOCAN #",
-        "MAIN ID JC #",
-        "CANMECH #",
-        "SUISA #",
-        "USA TEAM NOTES",
-        "GLOBAL TEAM NOTES",
-        "Youtube Video Link (All Types)"
+        "EEP Master Catalog Number", "Labeled Details for Portal & YTT System",
+        "PORTAL LINK TO SONG - MULTI LINE", "Release Link", "YOUTUBE TEAM",
+        "ISWC", "Recording ISRC", "Title", "Artist(s)", "Genre",
+        WRITERS_COL_NAME,       # Use variable to match dynamic finder
+        PUBLISHERS_COL_NAME,    # Use variable to match dynamic finder
+        SHARES_COL_NAME,        # Use variable to match dynamic finder
+        "Recording Label Name", "Recording Release Date (CWR)", "Recording Title",
+        "Album UPC", "Instrumental or Riddim Title (If Any)",
+        "BMI WORK #", "ASCAP WORK #", "USAMECH #", "MRCODE # / SDXCODE #",
+        "TUNECODE #", "SOCAN #", "MAIN ID JC #", "CANMECH #", "SUISA #",
+        "USA TEAM NOTES", "GLOBAL TEAM NOTES", "Youtube Video Link (All Types)"
     ]
 
     # ---- HELPER FUNCTIONS ----
