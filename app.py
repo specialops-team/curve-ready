@@ -144,7 +144,7 @@ def process_curve_files(jotform_file_buffer, curve_file_buffer):
                     present_values.append(prefix + normalized_value)
 
         # Using "\n" as the separator for a clean vertical list
-        return "\n".join(present_values).strip()
+        return "\n\n".join(present_values).strip()
 
 
     # ---- DYNAMIC ROW ALLOCATION SETUP ----
