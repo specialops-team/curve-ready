@@ -73,26 +73,36 @@ def process_curve_files(jotform_file_buffer, curve_file_buffer):
     PUBLISHERS_COL_NAME = publishers_col if publishers_col else "Publishers' Names"
     SHARES_COL_NAME = shares_col if shares_col else "Shares"
     
-    # --- NOTES SPECIFIC CONFIGURATION ---
+    # --- UPDATED NOTES CONFIGURATION ---
     NOTES_SOURCE_COLUMNS = [
         "EEP Master Catalog Number",
-        "ISWC",
+        "Labeled Details for Portal & YTT System",
         "PORTAL LINK TO SONG - MULTI LINE",
-        WRITERS_COL_NAME,       # Dynamically determined name
-        PUBLISHERS_COL_NAME,    # Dynamically determined name
-        SHARES_COL_NAME,        # Dynamically determined name
+        "Release Link",
+        "YOUTUBE TEAM",
+        "ISWC",
+        "Recording ISRC",
+        "Title",
+        "Artist(s)",
+        "Genre",       
+        "Recording Label Name",
+        "Recording Release Date (CWR)",
+        "Recording Title",
+        "Album UPC",
+        "Instrumental or Riddim Title (If Any)",
+        "BMI WORK #",
+        "ASCAP WORK #",
+        "USAMECH #",
+        "MRCODE # / SDXCODE #",
+        "TUNECODE #",
+        "SOCAN #",
+        "MAIN ID JC #",
+        "CANMECH #",
+        "SUISA #",
         "USA TEAM NOTES",
-        "GLOBAL TEAM NOTES"
+        "GLOBAL TEAM NOTES",
+        "Youtube Video Link (All Types)"
     ]
-    
-    # Columns that require their name to be inserted as a prefix in Notes
-    NOTES_PREFIX_COLUMNS = [
-        WRITERS_COL_NAME,
-        PUBLISHERS_COL_NAME,
-        SHARES_COL_NAME
-    ]
-    # --------------------------------------------------------------------
-
 
     # ---- HELPER FUNCTIONS ----
     
@@ -118,42 +128,23 @@ def process_curve_files(jotform_file_buffer, curve_file_buffer):
     # ---- FUNCTION TO COMBINE DATA FOR THE NOTES COLUMN ----
     def combine_notes_row(row):
         present_values = []
-        
-        # 1. Collect and prepare all values
         for col in NOTES_SOURCE_COLUMNS:
-            value_to_add = None
-            
-            # Use the 'in row' check which is reliable if the column name is correct
             if col in row:
                 value = row[col]
-                
-                # Apply universal exclusion filter ONLY to ISWC 
+                # Filter ISWC
                 if col == "ISWC":
                      value = apply_universal_filter(value)
                 
-                # Get string value and check for truthiness
                 value_str = str(value).strip() if pd.notna(value) and value is not None else ""
                 
                 if value_str:
-                    
-                    # 1. Apply Prefix if necessary
-                    prefix = ""
-                    if col in NOTES_PREFIX_COLUMNS:
-                        # Ensures the full, correct column name is used as the prefix
-                        prefix = f"{col}: " 
-                    
-                    # 2. Normalize internal whitespace (join all words with a single space)
+                    # Prefix logic: applies to EVERY column in the list above
+                    prefix = f"{col}: " 
                     normalized_value = " ".join(value_str.split()) 
-                    
-                    # 3. Combine prefix and normalized value
-                    value_to_add = prefix + normalized_value
+                    present_values.append(prefix + normalized_value)
 
-            if value_to_add:
-                present_values.append(value_to_add)
-
-        
-        # 2. Build the final string using a single space separator between columns
-        return " ".join(present_values).strip()
+        # Using "\n" as the separator for a clean vertical list
+        return "\n".join(present_values).strip()
 
 
     # ---- DYNAMIC ROW ALLOCATION SETUP ----
@@ -201,8 +192,20 @@ def process_curve_files(jotform_file_buffer, curve_file_buffer):
                 # Rule: Join all ISRC codes by semicolon (NO space)
                 col_data = col_data.apply(lambda x: join_multiline_parts(x, separator=";"))
                 
-                # Apply general filtering (NRY, NRYi, YTO)
-                col_data = col_data.apply(apply_universal_filter)
+                # Apply general filtering (NRY, NRYi, YTO) + specific "UATF" check
+                def filter_isrc(x):
+                    if isinstance(x, str):
+                        # Skip if it contains UATF (case-insensitive)
+                        if "UATF" in x.upper():
+                            return None
+                        # Apply the existing universal filters
+                        return apply_universal_filter(x)
+                    return x
+
+                col_data = col_data.apply(filter_isrc)
+                
+                # Convert to Uppercase
+                col_data = col_data.apply(lambda x: x.upper() if isinstance(x, str) else x)
 
             elif curve_col == "Tunecode":
                 # Apply general filtering first (NRY, NRYi, YTO, OJ)
