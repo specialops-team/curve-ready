@@ -292,16 +292,18 @@ def process_alternate_titles(curve_reexport_buffer, jotform_file_buffer) -> io.B
                     
                     # --- CAE EXTRACTION WITH INTEGER FORMATTING ---
                     c_cae_val = matched_jot_row.get(c_cae_col)
-                    if pd.isna(c_cae_val) or c_cae_val == "":
+                    if pd.isna(c_cae_val) or str(c_cae_val).strip() == "":
                         c_cae = ""
                     else:
                         try:
-                            c_cae = str(int(float(c_cae_val)))
+                            # Convert to float then int to remove ".0", then pad with zeros
+                            c_cae = str(int(float(c_cae_val))).zfill(11)
                         except (ValueError, TypeError):
-                            c_cae = str(c_cae_val).strip()
+                            # Fallback if the value is purely text
+                            c_cae = str(c_cae_val).strip().zfill(11)
                     
                     if c_last == "Unknown-Composer":
-                        c_cae = "96128879"
+                        c_cae = "00096128879"
 
                     c_f_val = matched_jot_row.get(c_first_col)
                     c_first = str(c_f_val).strip() if not pd.isna(c_f_val) else ""
