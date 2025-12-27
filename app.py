@@ -3,11 +3,12 @@ import io
 import os
 import tempfile
 from step2 import process_alternate_titles 
+from utils import get_notes_config, generate_notes_content # Import from utils instead
 # DELETED: from step3 import process_ip_chain 
 from flask import Flask, request, send_file, render_template
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = tempfile.gettempdir() 
+app.config['UPLOAD_FOLDER'] = tempfile.gettempdir()
 
 # --- CORE PROCESSING FUNCTION ---
 
@@ -73,20 +74,22 @@ def process_curve_files(jotform_file_buffer, curve_file_buffer):
     PUBLISHERS_COL_NAME = publishers_col if publishers_col else "Publishers' Names"
     SHARES_COL_NAME = shares_col if shares_col else "Shares"
     
-    # --- UPDATED NOTES CONFIGURATION ---
-    NOTES_SOURCE_COLUMNS = [
-        "EEP Master Catalog Number", "Labeled Details for Portal & YTT System",
-        "PORTAL LINK TO SONG - MULTI LINE", "Release Link", "YOUTUBE TEAM",
-        "ISWC", "Recording ISRC", "Title", "Artist(s)", "Genre",
-        WRITERS_COL_NAME,       # Use variable to match dynamic finder
-        PUBLISHERS_COL_NAME,    # Use variable to match dynamic finder
-        SHARES_COL_NAME,        # Use variable to match dynamic finder
-        "Recording Label Name", "Recording Release Date (CWR)", "Recording Title",
-        "Album UPC", "Instrumental or Riddim Title (If Any)",
-        "BMI WORK #", "ASCAP WORK #", "USAMECH #", "MRCODE # / SDXCODE #",
-        "TUNECODE #", "SOCAN #", "MAIN ID JC #", "CANMECH #", "SUISA #",
-        "USA TEAM NOTES", "GLOBAL TEAM NOTES", "Youtube Video Link (All Types)"
-    ]
+    
+    
+    # # --- UPDATED NOTES CONFIGURATION ---
+    # NOTES_SOURCE_COLUMNS = [
+    #     "EEP Master Catalog Number", "Labeled Details for Portal & YTT System",
+    #     "PORTAL LINK TO SONG - MULTI LINE", "Release Link", "YOUTUBE TEAM",
+    #     "ISWC", "Recording ISRC", "Title", "Artist(s)", "Genre",
+    #     WRITERS_COL_NAME,       # Use variable to match dynamic finder
+    #     PUBLISHERS_COL_NAME,    # Use variable to match dynamic finder
+    #     SHARES_COL_NAME,        # Use variable to match dynamic finder
+    #     "Recording Label Name", "Recording Release Date (CWR)", "Recording Title",
+    #     "Album UPC", "Instrumental or Riddim Title (If Any)",
+    #     "BMI WORK #", "ASCAP WORK #", "USAMECH #", "MRCODE # / SDXCODE #",
+    #     "TUNECODE #", "SOCAN #", "MAIN ID JC #", "CANMECH #", "SUISA #",
+    #     "USA TEAM NOTES", "GLOBAL TEAM NOTES", "Youtube Video Link (All Types)"
+    # ]
 
     # ---- HELPER FUNCTIONS ----
     
@@ -108,27 +111,29 @@ def process_curve_files(jotform_file_buffer, curve_file_buffer):
             if any(e in x_upper for e in exclusions):
                 return None
         return x
+    
+
         
     # ---- FUNCTION TO COMBINE DATA FOR THE NOTES COLUMN ----
-    def combine_notes_row(row):
-        present_values = []
-        for col in NOTES_SOURCE_COLUMNS:
-            if col in row:
-                value = row[col]
-                # Filter ISWC
-                if col == "ISWC":
-                     value = apply_universal_filter(value)
+    # def combine_notes_row(row):
+    #     present_values = []
+    #     for col in NOTES_SOURCE_COLUMNS:
+    #         if col in row:
+    #             value = row[col]
+    #             # Filter ISWC
+    #             if col == "ISWC":
+    #                  value = apply_universal_filter(value)
                 
-                value_str = str(value).strip() if pd.notna(value) and value is not None else ""
+    #             value_str = str(value).strip() if pd.notna(value) and value is not None else ""
                 
-                if value_str:
-                    # Prefix logic: applies to EVERY column in the list above
-                    prefix = f"{col}: " 
-                    normalized_value = " ".join(value_str.split()) 
-                    present_values.append(prefix + normalized_value)
+    #             if value_str:
+    #                 # Prefix logic: applies to EVERY column in the list above
+    #                 prefix = f"{col}: " 
+    #                 normalized_value = " ".join(value_str.split()) 
+    #                 present_values.append(prefix + normalized_value)
 
-        # Using "\n" as the separator for a clean vertical list
-        return "\n\n".join(present_values).strip()
+    #     # Using "\n" as the separator for a clean vertical list
+    #     return "\n\n".join(present_values).strip()
 
 
     # ---- DYNAMIC ROW ALLOCATION SETUP ----
@@ -221,11 +226,16 @@ def process_curve_files(jotform_file_buffer, curve_file_buffer):
             curve_df.loc[START_INDEX : end_index_of_data, curve_col] = col_data.values
 
 
-    # ---- 2. NOTES COLUMN GENERATION ----
+    # ---- 2. NOTES COLUMN GENERATION (Using Shared Functions) ----
     if "Notes" in curve_df.columns:
-        notes_combined_series = jot.apply(combine_notes_row, axis=1) 
-        curve_df.loc[START_INDEX : end_index_of_data, "Notes"] = notes_combined_series.values
-
+        # Get the dynamic column configuration from the shared helper
+        notes_config = get_notes_config(jot) 
+        
+        # Generate the notes content using the shared generator
+        notes_series = jot.apply(lambda r: generate_notes_content(r, notes_config), axis=1)
+        
+        # Apply the values to the Curve dataframe
+        curve_df.loc[START_INDEX : end_index_of_data, "Notes"] = notes_series.values
 
     # ---- 3. PRIORITY WORK CONDITIONAL LOGIC ----
     JOT_PRIORITY_COL = "Popular Catalog Status"

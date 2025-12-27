@@ -6,7 +6,8 @@ from typing import Dict, List, Tuple, Any
 import pandas as pd
 from openpyxl import load_workbook
 
-
+# Import shared functions from app.py
+from utils import get_notes_config, generate_notes_content # Import from utils instead
 # ---------------------------
 # Helpers
 # ---------------------------
@@ -182,6 +183,12 @@ def process_alternate_titles(curve_reexport_buffer, jotform_file_buffer) -> io.B
         alt_headers = _find_header_map(ws_alt)
         ip_headers = _find_header_map(ws_ip)
 
+        # 1. Identify the 'Notes' column index in the Works sheet
+        col_notes_idx = works_headers.get("NOTES")
+        
+        # 2. Get the Notes configuration from Jotform
+        notes_source_cols = get_notes_config(jot)
+
         def wh(keywords):
             for k, c in works_headers.items():
                 if all(w in k for w in keywords): return c
@@ -204,7 +211,7 @@ def process_alternate_titles(curve_reexport_buffer, jotform_file_buffer) -> io.B
         if not col_foreign: raise ValueError("Works sheet missing 'Foreign ID' column")
 
         participant_cols = {}
-        for i in range(1, 11):
+        for i in range(1, 21):
             p_map = {}
             prefix = f"PARTICIPANT {i}"
             p_map['TYPE'] = iph([prefix, "TYPE"])
@@ -251,6 +258,11 @@ def process_alternate_titles(curve_reexport_buffer, jotform_file_buffer) -> io.B
                 if iph(["TERRITORY"]): ws_ip.cell(target_row, iph(["TERRITORY"])).value = w_terr_val
 
             if matched_jot_row is not None:
+                # --- UPDATE WORKS SHEET NOTES ---
+                if col_notes_idx:
+                    note_string = generate_notes_content(matched_jot_row, notes_source_cols)
+                    ws_works.cell(row=r, column=col_notes_idx).value = note_string
+
                 writer_total = 0
                 if jot_writer_total_col:
                     try:
@@ -260,7 +272,8 @@ def process_alternate_titles(curve_reexport_buffer, jotform_file_buffer) -> io.B
                         writer_total = 0
                 
                 extracted_writers = []
-                for i in range(1, min(writer_total + 1, 11)):
+                # Loop through up to 20 writers
+                for i in range(1, min(writer_total + 1, 21)):
                     c_first_col = _find_jot_col(jot, [[f"COMPOSER {i} FIRST"]])
                     c_mid_col = _find_jot_col(jot, [[f"COMPOSER {i} MIDDLE"]])
                     c_last_col = _find_jot_col(jot, [[f"COMPOSER {i} LAST"]])
@@ -273,54 +286,64 @@ def process_alternate_titles(curve_reexport_buffer, jotform_file_buffer) -> io.B
                     p_cap_col = _find_jot_col(jot, [[f"PUBLISHER {i} CAPACITY"]])
                     eep_share_col = _find_jot_col(jot, [["ELITE", "EMBASSY", "REPRESENTS", "%"]])
 
-                    # --- FIXED NAN PROTECTION START ---
-                    c_f_val = matched_jot_row.get(c_first_col)
-                    c_first = str(c_f_val).strip() if not pd.isna(c_f_val) else ""
-                    
-                    c_m_val = matched_jot_row.get(c_mid_col)
-                    c_mid = str(c_m_val).strip() if not pd.isna(c_m_val) else ""
-                    
+                    # --- LAST NAME EXTRACTION ---
                     c_l_val = matched_jot_row.get(c_last_col)
                     c_last = str(c_l_val).strip() if not pd.isna(c_l_val) else ""
                     
+                    # --- CAE EXTRACTION WITH INTEGER FORMATTING ---
+                    c_cae_val = matched_jot_row.get(c_cae_col)
+                    if pd.isna(c_cae_val) or c_cae_val == "":
+                        c_cae = ""
+                    else:
+                        try:
+                            c_cae = str(int(float(c_cae_val)))
+                        except (ValueError, TypeError):
+                            c_cae = str(c_cae_val).strip()
+                    
+                    if c_last == "Unknown-Composer":
+                        c_cae = "96128879"
+
+                    c_f_val = matched_jot_row.get(c_first_col)
+                    c_first = str(c_f_val).strip() if not pd.isna(c_f_val) else ""
+                    c_m_val = matched_jot_row.get(c_mid_col)
+                    c_mid = str(c_m_val).strip() if not pd.isna(c_m_val) else ""
+                    
                     full_name = f"{c_first} {c_mid} {c_last}".replace("  ", " ").strip()
-                    # --- FIXED NAN PROTECTION END ---
 
                     c_share = _parse_percentage(matched_jot_row.get(c_share_col))
                     c_cap = _map_capacity(matched_jot_row.get(c_cap_col), is_publisher=False)
                     
-                    c_cae_val = matched_jot_row.get(c_cae_col)
-                    c_cae = str(c_cae_val).strip() if not pd.isna(c_cae_val) else ""
-                    
-                    ctrl_val = str(matched_jot_row.get(c_controlled_col)).strip().upper() if c_controlled_col else ""
+                    ctrl_val = str(matched_jot_row.get(c_controlled_col)).strip().upper() if c_controlled_col else "N"
                     is_composer_controlled = (ctrl_val == "Y")
                     
                     p_name_val = matched_jot_row.get(p_name_col)
                     p_name_str = str(p_name_val).strip() if not pd.isna(p_name_val) else ""
                     
                     p_cae_val = matched_jot_row.get(p_cae_col)
-                    p_cae = str(p_cae_val).strip() if not pd.isna(p_cae_val) else ""
+                    if pd.isna(p_cae_val) or p_cae_val == "":
+                        p_cae = ""
+                    else:
+                        try:
+                            p_cae = str(int(float(p_cae_val)))
+                        except (ValueError, TypeError):
+                            p_cae = str(p_cae_val).strip()
                     
                     p_cap = _map_capacity(matched_jot_row.get(p_cap_col), is_publisher=True)
 
                     raw_mech = matched_jot_row.get(eep_share_col) if eep_share_col else None
                     mech_val = _extract_number(raw_mech)
 
-                    norm_p_name = _norm(p_name_str)
-                    is_publisher_controlled = "elite embassy publishing" in norm_p_name or "music embassies publishing" in norm_p_name
-                    
                     w_obj = {
                         "c_first": c_first, "c_mid": c_mid, "c_last": c_last, "c_name": full_name,
                         "c_share": c_share, "c_cap": c_cap, "c_cae": c_cae,
                         "p_name": p_name_str, "p_cae": p_cae, "p_cap": p_cap,
                         "mech_val": mech_val if mech_val is not None else 0.0,
-                        "is_controlled": is_composer_controlled, 
-                        "is_publisher_controlled": is_publisher_controlled 
+                        "is_controlled": is_composer_controlled 
                     }
                     extracted_writers.append(w_obj)
 
-                controlled_group = [w for w in extracted_writers if w['is_publisher_controlled']]
-                other_group = [w for w in extracted_writers if not w['is_publisher_controlled']]
+                controlled_group = [w for w in extracted_writers if w['is_controlled']]
+                other_group = [w for w in extracted_writers if not w['is_controlled']]
 
                 elite_mech_value = 0.0
                 for w in controlled_group:
@@ -370,7 +393,7 @@ def process_alternate_titles(curve_reexport_buffer, jotform_file_buffer) -> io.B
 
                     for i, w in enumerate(writers):
                         p_idx = i + 2 
-                        if p_idx > 10: break
+                        if p_idx > 20: break
                         p_cols = participant_cols[p_idx]
                         comp_perf = w['c_share'] * 0.5
                         
