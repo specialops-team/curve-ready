@@ -52,6 +52,7 @@ def process_curve_files(jotform_file_buffer, curve_file_buffer):
         "Artist(s)": "Performers", 
         "Recording ISRC": "Track ISRCs",
         "EEP Master Catalog Number": "Foreign ID",  # UPDATED MAPPING HERE
+        "GLOBAL CATALOG # - MAIN IDENTIFIER": "Main Identifier",
     }
 
     # --- DYNAMIC COLUMN NAME FINDER (FIX FOR MISMATCHED NAMES) ---
