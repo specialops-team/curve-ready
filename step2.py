@@ -6,8 +6,9 @@ from typing import Dict, List, Tuple, Any
 import pandas as pd
 from openpyxl import load_workbook
 
-# Import shared functions from app.py
-from utils import get_notes_config, generate_notes_content # Import from utils instead
+# Import shared functions from utils.py
+from utils import get_notes_config, generate_notes_content, validate_jotform_data
+
 # ---------------------------
 # Helpers
 # ---------------------------
@@ -133,6 +134,15 @@ def process_alternate_titles(curve_reexport_buffer, jotform_file_buffer) -> io.B
     try:
         # ---- Load Jotform ----
         jot = pd.read_excel(jotform_file_buffer, header=0)
+
+        # -----------------------------------------------------
+        # VALIDATION STEP
+        # -----------------------------------------------------
+        validation_errors = validate_jotform_data(jot)
+        if validation_errors:
+            # Return the errors joined by newlines directly. 
+            # The frontend will detect this and show the modal.
+            return "\n".join(validation_errors)
 
         # Basic Jotform Columns
         jot_title_col = _find_jot_col(jot, [["TITLE"]])
@@ -442,4 +452,4 @@ def process_alternate_titles(curve_reexport_buffer, jotform_file_buffer) -> io.B
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return f"Processing Failed in step2.py: {e.__class__.__name__}: {e}"
+        return f"Processing Failed in step2.py: {e}"

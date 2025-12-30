@@ -4,7 +4,6 @@ import os
 import tempfile
 from step2 import process_alternate_titles 
 from utils import get_notes_config, generate_notes_content # Import from utils instead
-# DELETED: from step3 import process_ip_chain 
 from flask import Flask, request, send_file, render_template
 
 app = Flask(__name__)
@@ -55,43 +54,6 @@ def process_curve_files(jotform_file_buffer, curve_file_buffer):
         "GLOBAL CATALOG # - MAIN IDENTIFIER": "Main Identifier",
     }
 
-    # --- DYNAMIC COLUMN NAME FINDER (FIX FOR MISMATCHED NAMES) ---
-    
-    # Find the actual JotForm header names that contain the key terms
-    def find_col_name(keywords):
-        keywords = [k.upper() for k in keywords]
-        # Iterate over jot.columns and find the first one that contains all keywords
-        for col in jot.columns:
-            if isinstance(col, str) and all(k in col.upper() for k in keywords):
-                return col
-        return None # Return None if not found
-
-    writers_col = find_col_name(['Writers', 'Composer'])
-    publishers_col = find_col_name(['Publishers', 'Names'])
-    shares_col = find_col_name(['Shares'])
-
-    # Fallback to the explicit names provided by the user if dynamic finding fails
-    WRITERS_COL_NAME = writers_col if writers_col else "Writers (A) - Author (C) - Composer"
-    PUBLISHERS_COL_NAME = publishers_col if publishers_col else "Publishers' Names"
-    SHARES_COL_NAME = shares_col if shares_col else "Shares"
-    
-    
-    
-    # # --- UPDATED NOTES CONFIGURATION ---
-    # NOTES_SOURCE_COLUMNS = [
-    #     "EEP Master Catalog Number", "Labeled Details for Portal & YTT System",
-    #     "PORTAL LINK TO SONG - MULTI LINE", "Release Link", "YOUTUBE TEAM",
-    #     "ISWC", "Recording ISRC", "Title", "Artist(s)", "Genre",
-    #     WRITERS_COL_NAME,       # Use variable to match dynamic finder
-    #     PUBLISHERS_COL_NAME,    # Use variable to match dynamic finder
-    #     SHARES_COL_NAME,        # Use variable to match dynamic finder
-    #     "Recording Label Name", "Recording Release Date (CWR)", "Recording Title",
-    #     "Album UPC", "Instrumental or Riddim Title (If Any)",
-    #     "BMI WORK #", "ASCAP WORK #", "USAMECH #", "MRCODE # / SDXCODE #",
-    #     "TUNECODE #", "SOCAN #", "MAIN ID JC #", "CANMECH #", "SUISA #",
-    #     "USA TEAM NOTES", "GLOBAL TEAM NOTES", "Youtube Video Link (All Types)"
-    # ]
-
     # ---- HELPER FUNCTIONS ----
     
     # Multi-purpose function for joining lines with a specified separator (used for native columns)
@@ -113,30 +75,6 @@ def process_curve_files(jotform_file_buffer, curve_file_buffer):
                 return None
         return x
     
-
-        
-    # ---- FUNCTION TO COMBINE DATA FOR THE NOTES COLUMN ----
-    # def combine_notes_row(row):
-    #     present_values = []
-    #     for col in NOTES_SOURCE_COLUMNS:
-    #         if col in row:
-    #             value = row[col]
-    #             # Filter ISWC
-    #             if col == "ISWC":
-    #                  value = apply_universal_filter(value)
-                
-    #             value_str = str(value).strip() if pd.notna(value) and value is not None else ""
-                
-    #             if value_str:
-    #                 # Prefix logic: applies to EVERY column in the list above
-    #                 prefix = f"{col}: " 
-    #                 normalized_value = " ".join(value_str.split()) 
-    #                 present_values.append(prefix + normalized_value)
-
-    #     # Using "\n" as the separator for a clean vertical list
-    #     return "\n\n".join(present_values).strip()
-
-
     # ---- DYNAMIC ROW ALLOCATION SETUP ----
     rows_processed_len = len(jot)
     end_index_of_data = START_INDEX + rows_processed_len - 1
