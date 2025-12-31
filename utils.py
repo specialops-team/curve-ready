@@ -93,13 +93,13 @@ def validate_jotform_data(df):
             if col_ctrl:
                 val_str = str(row[col_ctrl]).strip().upper() if pd.notna(row[col_ctrl]) else ""
                 if val_str not in valid_controlled:
-                    errors.append(f"{prefix}In rows {excel_row_num-1} Composer {i} Controlled is missing or not matched")
+                    errors.append(f"{prefix}In rows {excel_row_num} Composer {i} Controlled is missing or not matched")
 
             col_cap = get_col([f"COMPOSER {i}", "CAPACITY"])
             if col_cap:
                 val_str = str(row[col_cap]).strip().upper() if pd.notna(row[col_cap]) else ""
                 if val_str == "NAN": val_str = ""
                 if val_str not in valid_capacity:
-                    errors.append(f"{prefix}In rows {excel_row_num-1} Composer {i} Capacity is missing or not matched")
+                    errors.append(f"{prefix}In rows {excel_row_num} Composer {i} Capacity is missing or not matched")
 
     return errors
