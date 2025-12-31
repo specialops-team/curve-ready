@@ -64,25 +64,26 @@ document.addEventListener("DOMContentLoaded", () => {
     filenameBuilder,
   }) {
     statusDiv.classList.add("hidden");
-    statusDiv.textContent = "";
-
     submitBtn.disabled = true;
     const originalBtnText = submitBtn.textContent;
-    submitBtn.textContent = "Processing... Please wait.";
-
-    const formData = new FormData(form);
+    submitBtn.textContent = "Processing...";
 
     try {
       const response = await fetch(endpoint, {
         method: "POST",
-        body: formData,
+        body: new FormData(form),
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        if (errorText.includes("missing or not matched")) {
+
+        // Updated check to trigger modal for validation errors
+        if (
+          errorText.includes("In rows") ||
+          errorText.includes("Writer Total")
+        ) {
           showValidationErrorModal(errorText);
-          statusDiv.classList.add("hidden"); // Background stay hidden
+          statusDiv.classList.add("hidden"); // Hide the background error message
         } else {
           statusDiv.classList.remove("hidden");
           statusDiv.classList.add("bg-red-100", "text-red-800");
@@ -91,25 +92,23 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      // Successful Download Logic
-      const filename = filenameBuilder();
+      // Handle Success
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.style.display = "none";
       a.href = url;
-      a.download = filename;
+      a.download = filenameBuilder();
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
+      a.remove();
 
       statusDiv.classList.remove("hidden");
-      statusDiv.classList.add("bg-green-100", "text-green-800");
-      statusDiv.textContent = `Success! File "${filename}" downloaded.`;
+      statusDiv.className =
+        "status-message mt-6 p-4 rounded-md bg-green-100 text-green-800";
+      statusDiv.textContent = "Success! File downloaded.";
     } catch (error) {
       statusDiv.classList.remove("hidden");
-      statusDiv.classList.add("bg-red-100", "text-red-800");
-      statusDiv.textContent = `Error: ${error.message}`;
+      statusDiv.textContent = `Unexpected error: ${error.message}`;
     } finally {
       submitBtn.disabled = false;
       submitBtn.textContent = originalBtnText;

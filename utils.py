@@ -48,9 +48,8 @@ def generate_notes_content(row, notes_columns):
 
 def validate_jotform_data(df):
     """
-    Validates writers' Controlled (Y/N) and Capacity (A/C/AC/CA).
-    Returns a list of error strings in the format:
-    "In rows {number} Composer {Number} [Column] is missing or not matched"
+    Validates Writer Total, Controlled (Y/N), and Capacity (A/C/AC/CA).
+    Returns a list of error strings with Catalog Number and Title prefix.
     """
     errors = []
     
@@ -61,39 +60,46 @@ def validate_jotform_data(df):
                 return col
         return None
 
+    # Identify identification columns and requirement columns
+    catalog_col = get_col(["EEP", "MASTER", "CATALOG"])
+    title_col = get_col(["TITLE"])
     total_writers_col = get_col(["WRITER", "TOTAL"]) or get_col(["TOTAL", "WRITERS"])
     
-    if total_writers_col:
-        valid_controlled = {"Y", "N"}
-        valid_capacity = {"A", "C", "AC", "CA"}
+    valid_controlled = {"Y", "N"}
+    valid_capacity = {"A", "C", "AC", "CA"}
 
-        for index, row in df.iterrows():
-            excel_row_num = index + 2
-            
+    for index, row in df.iterrows():
+        excel_row_num = index + 2
+        
+        # Identification Prefix for clear error reporting
+        cat_val = str(row[catalog_col]).strip() if catalog_col and pd.notna(row[catalog_col]) else "Unknown ID"
+        title_val = str(row[title_col]).strip() if title_col and pd.notna(row[title_col]) else "Unknown Title"
+        prefix = f"{cat_val} ({title_val}) - "
+
+        # 1. NEW: Check if Writer Total is empty or invalid
+        w_count = 0
+        val_total = row.get(total_writers_col)
+        if total_writers_col is None or pd.isna(val_total) or str(val_total).strip() == "":
+            errors.append(f"{prefix}In rows {excel_row_num} Writer Total is missing")
+        else:
             try:
-                val = row[total_writers_col]
-                w_count = int(float(val)) if pd.notna(val) else 0
+                w_count = int(float(val_total))
             except:
-                w_count = 0
-            
-            for i in range(1, w_count + 1):
-                # 1. Check Controlled
-                col_ctrl = get_col([f"COMPOSER {i}", "CONTROLLED"])
-                if col_ctrl:
-                    raw_val = row[col_ctrl]
-                    val_str = str(raw_val).strip().upper() if pd.notna(raw_val) else ""
-                    
-                    if val_str not in valid_controlled:
-                        errors.append(f"In rows {excel_row_num} Composer {i} Controlled is missing or not matched")
+                errors.append(f"{prefix}In rows {excel_row_num} Writer Total is not a valid number")
+        
+        # 2. Check individual Composer details based on total count
+        for i in range(1, w_count + 1):
+            col_ctrl = get_col([f"COMPOSER {i}", "CONTROLLED"])
+            if col_ctrl:
+                val_str = str(row[col_ctrl]).strip().upper() if pd.notna(row[col_ctrl]) else ""
+                if val_str not in valid_controlled:
+                    errors.append(f"{prefix}In rows {excel_row_num-1} Composer {i} Controlled is missing or not matched")
 
-                # 2. Check Capacity
-                col_cap = get_col([f"COMPOSER {i}", "CAPACITY"])
-                if col_cap:
-                    raw_val = row[col_cap]
-                    val_str = str(raw_val).strip().upper() if pd.notna(raw_val) else ""
-                    if val_str == "NAN": val_str = ""
-                    
-                    if val_str not in valid_capacity:
-                        errors.append(f"In rows {excel_row_num} Composer {i} Capacity is missing or not matched")
+            col_cap = get_col([f"COMPOSER {i}", "CAPACITY"])
+            if col_cap:
+                val_str = str(row[col_cap]).strip().upper() if pd.notna(row[col_cap]) else ""
+                if val_str == "NAN": val_str = ""
+                if val_str not in valid_capacity:
+                    errors.append(f"{prefix}In rows {excel_row_num-1} Composer {i} Capacity is missing or not matched")
 
     return errors
