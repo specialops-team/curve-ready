@@ -27,10 +27,21 @@ document.addEventListener("DOMContentLoaded", () => {
   const modal = document.getElementById("validationModal");
   const tableBody = document.getElementById("validationTableBody");
   const closeModalBtn = document.getElementById("closeModalBtn");
+  const bypassBtn = document.getElementById("bypassBtn"); // Get the bypass button
 
   closeModalBtn.addEventListener("click", () => modal.classList.add("hidden"));
   modal.addEventListener("click", (e) => {
     if (e.target === modal) modal.classList.add("hidden");
+  });
+
+  // Bypass Button Logic
+  bypassBtn.addEventListener("click", async () => {
+    modal.classList.add("hidden");
+    // Re-submit Step 2 with the skip flag
+    await submitAndDownload({
+      ...step2Config, // Spread the config used for Step 2
+      additionalData: { skip_validation: "true" },
+    });
   });
 
   function showValidationErrorModal(errorText) {
@@ -62,6 +73,7 @@ document.addEventListener("DOMContentLoaded", () => {
     submitBtn,
     statusDiv,
     filenameBuilder,
+    additionalData = {}, // New parameter for extra flags
   }) {
     statusDiv.classList.add("hidden");
     submitBtn.disabled = true;
@@ -69,9 +81,16 @@ document.addEventListener("DOMContentLoaded", () => {
     submitBtn.textContent = "Processing...";
 
     try {
+      const formData = new FormData(form);
+
+      // Append any additional data (like the bypass flag)
+      for (const key in additionalData) {
+        formData.append(key, additionalData[key]);
+      }
+
       const response = await fetch(endpoint, {
         method: "POST",
-        body: new FormData(form),
+        body: formData,
       });
 
       if (!response.ok) {
@@ -83,7 +102,7 @@ document.addEventListener("DOMContentLoaded", () => {
           errorText.includes("Writer Total")
         ) {
           showValidationErrorModal(errorText);
-          statusDiv.classList.add("hidden"); // Hide the background error message
+          statusDiv.classList.add("hidden");
         } else {
           statusDiv.classList.remove("hidden");
           statusDiv.classList.add("bg-red-100", "text-red-800");
@@ -136,21 +155,25 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
   const curve2 = document.getElementById("curve_file_step2");
+
+  // Define config object so we can reuse it in the bypass button
+  const step2Config = {
+    form: document.getElementById("uploadFormStep2"),
+    endpoint: "/process_step2",
+    submitBtn: document.getElementById("submitBtnStep2"),
+    statusDiv: document.getElementById("statusStep2"),
+    filenameBuilder: () => {
+      const base = curve2.files[0]
+        ? curve2.files[0].name.split(".").slice(0, -1).join(".")
+        : "file";
+      return `${base}_curve_ready_step2.xlsx`;
+    },
+  };
+
   document
     .getElementById("uploadFormStep2")
     .addEventListener("submit", async (e) => {
       e.preventDefault();
-      await submitAndDownload({
-        form: e.target,
-        endpoint: "/process_step2",
-        submitBtn: document.getElementById("submitBtnStep2"),
-        statusDiv: document.getElementById("statusStep2"),
-        filenameBuilder: () => {
-          const base = curve2.files[0]
-            ? curve2.files[0].name.split(".").slice(0, -1).join(".")
-            : "file";
-          return `${base}_curve_ready_step2.xlsx`;
-        },
-      });
+      await submitAndDownload(step2Config);
     });
 });

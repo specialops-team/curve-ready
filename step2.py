@@ -130,7 +130,7 @@ def _map_capacity(cap_val, is_publisher=False):
 # Main processor
 # ---------------------------
 
-def process_alternate_titles(curve_reexport_buffer, jotform_file_buffer) -> io.BytesIO | str:
+def process_alternate_titles(curve_reexport_buffer, jotform_file_buffer, skip_validation=False) -> io.BytesIO | str:
     try:
         # ---- Load Jotform ----
         jot = pd.read_excel(jotform_file_buffer, header=0)
@@ -138,11 +138,12 @@ def process_alternate_titles(curve_reexport_buffer, jotform_file_buffer) -> io.B
         # -----------------------------------------------------
         # VALIDATION STEP
         # -----------------------------------------------------
-        validation_errors = validate_jotform_data(jot)
-        if validation_errors:
-            # Return the errors joined by newlines directly. 
-            # The frontend will detect this and show the modal.
-            return "\n".join(validation_errors)
+        if not skip_validation:
+            validation_errors = validate_jotform_data(jot)
+            if validation_errors:
+                # Return the errors joined by newlines directly. 
+                # The frontend will detect this and show the modal.
+                return "\n".join(validation_errors)
 
         # Basic Jotform Columns
         jot_title_col = _find_jot_col(jot, [["TITLE"]])

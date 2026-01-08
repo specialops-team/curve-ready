@@ -23,7 +23,7 @@ def process_curve_files(jotform_file_buffer, curve_file_buffer):
     START_INDEX = 1  # Corresponds to Excel Row 3 (index 2)
     
     # List of universal exclusionary terms (case-insensitive check)
-    EXCLUSIONS_LIST = ["REQUEST FROM BMI", "NOT ELIGIBLE", "NRY", "NRYI", "YTO", "OJ"] 
+    EXCLUSIONS_LIST = ["REQUEST FROM BMI", "REQUEST IN BMI", "NOT ELIGIBLE", "NRY", "NRYI", "YTO", "OJ"] 
     
     try:
         # ---- LOAD EXCEL FILES ----
@@ -278,6 +278,9 @@ def process_step2():
 
     curve_file = request.files["curve_file"]
     jotform_file = request.files["jotform_file"]
+    
+    # Check for the bypass flag (sent as string "true")
+    skip_validation = request.form.get("skip_validation") == "true"
 
     if curve_file.filename == "" or jotform_file.filename == "":
         return "Error: Please select both files.", 400
@@ -290,7 +293,8 @@ def process_step2():
     # The output of this function is a BytesIO buffer of the file with Alt Titles AND IP Chain inserted.
     final_output_buffer = process_alternate_titles(
         io.BytesIO(curve_file_content),
-        io.BytesIO(jotform_file_content)
+        io.BytesIO(jotform_file_content),
+        skip_validation=skip_validation
     )
 
     # Check for error from Step 2
